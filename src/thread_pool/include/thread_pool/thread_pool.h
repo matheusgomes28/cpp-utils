@@ -9,7 +9,8 @@ namespace thread_pool
     class Pool
     {
     public:
-        void start();
+        explicit Pool(std::size_t n);
+
         void stop();
         void queue(std::function<void()> task);
 
