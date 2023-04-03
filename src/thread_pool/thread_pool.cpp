@@ -1,6 +1,7 @@
 #include <thread_pool/thread_pool.h>
 #include <thread_pool/thread_pool.h>
 
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
@@ -32,14 +33,14 @@ public:
 
     explicit ThreadPoolImpl(std::size_t n_threads)
     {
-        for (std::size_t i = 0; i < n_threads; ++i)
+        for (std::size_t i = 0; i < std::max(n_threads, 1lu); ++i)
         {
             _threads.push_back(std::thread{[&]{
 
                 bool should_stop = false;
                 while (!should_stop)
                 {
-                    std::unique_lock<std::mutex> cv_lock;
+                    std::unique_lock<std::mutex> cv_lock{_queue_mutex};
                     _queue_condition.wait(cv_lock, [&]{
                         return !_queue.empty();
                     });
@@ -58,6 +59,19 @@ public:
                     }
                 }
             }});
+        }
+    }
+
+    ~ThreadPoolImpl()
+    {
+        stop();
+
+        for (auto& thread : _threads)
+        {
+            if (thread.joinable())
+            {
+                thread.join();
+            }
         }
     }
 
@@ -90,6 +104,8 @@ thread_pool::Pool::Pool(std::size_t n)
     : _impl{std::make_unique<ThreadPoolImpl>(n)}
 {
 }
+
+thread_pool::Pool::~Pool() = default;
 
 void thread_pool::Pool::queue(std::function<void()> task)
 {

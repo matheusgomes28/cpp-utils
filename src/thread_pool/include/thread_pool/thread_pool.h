@@ -10,6 +10,7 @@ namespace thread_pool
     {
     public:
         explicit Pool(std::size_t n);
+        ~Pool();
 
         void stop();
         void queue(std::function<void()> task);
